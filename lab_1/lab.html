@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Интернет-магазин</title>
+  <meta name="description" content="Пример интернет-магазина: каталог, корзина, оформление заказа, localStorage" />
+  <style>
+    /* ========== СБОРКА СТИЛЕЙ ========== */
+    :root{
+      --bg:#f6f7fb; --card:#fff; --accent:#4f46e5; --muted:#6b7280; --danger:#ef4444;
+      --max-width:1100px;
+    }
+    *{box-sizing:border-box}
+    body{font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; margin:0; background:var(--bg); color:#111}
+    header{background:linear-gradient(180deg, #ffffff 0%, #eef2ff 100%); padding:16px 20px}
+    .container{max-width:var(--max-width); margin:0 auto}
+    .topbar{display:flex; align-items:center; gap:16px; justify-content:space-between}
+    h1{font-size:1.25rem; margin:0}
+    nav{display:flex; gap:12px; align-items:center}
+    button.btn{background:var(--accent); color:#fff; border:0; padding:8px 12px; border-radius:8px; cursor:pointer}
+    button.btn.secondary{background:transparent; color:var(--accent); border:1px solid rgba(79,70,229,0.12)}
+
+    main{padding:20px}
+    .catalog{display:grid; grid-template-columns:repeat(3, 1fr); gap:18px}
+
+    /* Карточка товара */
+    .card{background:var(--card); border-radius:12px; padding:12px; box-shadow:0 2px 8px rgba(16,24,40,0.04); display:flex; flex-direction:column}
+    .card img{width:100%; height:160px; object-fit:cover; border-radius:8px}
+    .card h3{margin:8px 0 0; font-size:1rem}
+    .price-row{display:flex; justify-content:space-between; align-items:center; margin-top:auto}
+    .price{font-weight:600}
+
+    /* Модал корзины */
+    .modal-backdrop{position:fixed; inset:0; background:rgba(0,0,0,0.4); display:none; align-items:center; justify-content:center; z-index:50}
+    .modal{background:var(--card); width:min(760px,95%); max-height:90vh; overflow:auto; border-radius:12px; padding:16px}
+    .modal header{display:flex; justify-content:space-between; align-items:center}
+    .cart-list{margin-top:12px; display:flex; flex-direction:column; gap:12px}
+    .cart-item{display:flex; gap:12px; align-items:center}
+    .cart-item img{width:72px; height:72px; object-fit:cover; border-radius:6px}
+    .cart-item .meta{flex:1}
+    .cart-actions{display:flex; gap:8px; align-items:center}
+    input.qty{width:56px; padding:6px}
+    .total-row{display:flex; justify-content:space-between; margin-top:12px; align-items:center}
+
+    /* Форма заказа */
+    form.order-form{display:grid; gap:10px; margin-top:12px}
+    .form-row{display:flex; gap:8px}
+    .form-row > *{flex:1}
+    input[type=text], input[type=tel], textarea{padding:10px; border-radius:8px; border:1px solid #e6e9ef}
+
+    /* Ответ после оформления */
+    .toast{background:#e6fffa; border:1px solid #bdecd6; padding:10px; border-radius:8px; display:none}
+
+    /* Стили футера / адаптив */
+    footer{padding:20px; text-align:center; color:var(--muted)}
+    @media (max-width:980px){.catalog{grid-template-columns:repeat(2,1fr)}}
+    @media (max-width:640px){
+      .catalog{grid-template-columns:1fr}
+      .topbar{flex-direction:column; align-items:flex-start; gap:12px}
+      .card img{height:200px}
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container topbar">
+      <div>
+        <h1>Учебный магазин</h1>
+        <div style="color:var(--muted); font-size:0.9rem">Каталог товаров, корзина (localStorage), оформление заказа</div>
+      </div>
+      <nav>
+        <button id="open-cart" class="btn">Корзина (<span id="cart-count">0</span>)</button>
+        <button id="clear-cart" class="btn secondary">Очистить</button>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <section aria-labelledby="catalog-heading">
+      <h2 id="catalog-heading" style="margin-top:0">Каталог</h2>
+      <div class="catalog" id="catalog">
+        <!-- Карточки будут добавлены через JS -->
+      </div>
+    </section>
+  </main>
+
+  <!-- Модал корзины и оформление заказа -->
+  <div id="cart-modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="modal" role="document">
+      <header>
+        <h3>Ваша корзина</h3>
+        <div>
+          <button id="close-cart" class="btn secondary">Закрыть</button>
+        </div>
+      </header>
+
+      <div class="cart-list" id="cart-list"></div>
+
+      <div class="total-row">
+        <div>Итого: <strong id="cart-total">0 ₽</strong></div>
+        <div>
+          <button id="checkout" class="btn">Оформить заказ</button>
+        </div>
+      </div>
+
+      <hr style="margin-top:12px" />
+
+      <section id="order-section" style="display:none">
+        <h4>Форма оформления заказа</h4>
+        <div class="toast" id="order-toast">Заказ создан!</div>
+        <form id="order-form" class="order-form" novalidate>
+          <div class="form-row">
+            <input type="text" id="firstName" name="firstName" placeholder="Имя" required />
+            <input type="text" id="lastName" name="lastName" placeholder="Фамилия" required />
+          </div>
+          <input type="text" id="address" name="address" placeholder="Адрес доставки" required />
+          <input type="tel" id="phone" name="phone" placeholder="Контактный номер телефона" required pattern="[0-9+\-() ]{6,}" />
+          <div style="display:flex; gap:8px; justify-content:flex-end">
+            <button type="button" id="cancel-order" class="btn secondary">Отмена</button>
+            <button type="submit" class="btn">Создать заказ</button>
+          </div>
+        </form>
+      </section>
+
+    </div>
+  </div>
+
+  <footer class="container">
+    <small>Учебная работа — реализовано без фреймворков. Поддерживается localStorage.</small>
+  </footer>
+
+  <script>
+    // ========== ДАННЫЕ ТОВАРОВ (пример) ==========
+    const products = [
+      {id:1, title:'Фитнес-браслет', price:2490, img:'https://shopozz.ru/images/articles/article-1218/p1gusgtend10qqbd0ak6jo71car7.jpg'},
+      {id:2, title:'Беспроводные наушники', price:4990, img:'https://avatars.mds.yandex.net/get-mpic/1865974/2a0000018dea751ccc9802bc05a3bf6e314a/orig'},
+      {id:3, title:'Портативный аккумулятор', price:1890, img:'https://main-cdn.sbermegamarket.ru/big2/hlr-system/1725198414/100023901588b0.jpg'},
+      {id:4, title:'Умная лампочка', price:990, img:'https://avatars.mds.yandex.net/get-mpic/12235261/2a00000193bfe53857d4f46caea92e2c6c73/orig'},
+      {id:5, title:'Коврик для мыши', price:450, img:'https://avatars.mds.yandex.net/get-mpic/10933212/2a0000018a322a71f0339fd8161a04d26a57/orig'},
+      {id:6, title:'Клавиатура механическая', price:7990, img:'https://avatars.mds.yandex.net/get-mpic/5216590/img_id5364861166910646704.jpeg/orig'}
+    ];
+
+    // ========== ИНИЦИАЛИЗАЦИЯ ДОМ ==========
+    const catalogEl = document.getElementById('catalog');
+    const cartCountEl = document.getElementById('cart-count');
+    const openCartBtn = document.getElementById('open-cart');
+    const cartModal = document.getElementById('cart-modal');
+    const closeCartBtn = document.getElementById('close-cart');
+    const cartListEl = document.getElementById('cart-list');
+    const cartTotalEl = document.getElementById('cart-total');
+    const checkoutBtn = document.getElementById('checkout');
+    const orderSection = document.getElementById('order-section');
+    const orderForm = document.getElementById('order-form');
+    const orderToast = document.getElementById('order-toast');
+    const clearCartBtn = document.getElementById('clear-cart');
+    const cancelOrderBtn = document.getElementById('cancel-order');
+
+    // Рендер карточек
+    function renderCatalog(){
+      catalogEl.innerHTML = '';
+      for(const p of products){
+        const card = document.createElement('article');
+        card.className = 'card';
+        card.innerHTML = `
+          <img src="${p.img}" alt="${p.title}">
+          <h3>${p.title}</h3>
+          <p class="price-row"><span class="price">${p.price} ₽</span><button class="btn add-to-cart" data-id="${p.id}">Добавить в корзину</button></p>
+        `;
+        catalogEl.appendChild(card);
+      }
+    }
+
+    // ========== КОРЗИНА: МОДЕЛЬ ==========
+    const CART_KEY = 'lab_cart_v1';
+    function loadCart(){
+      try{
+        return JSON.parse(localStorage.getItem(CART_KEY)) || {};
+      }catch(e){return {}};
+    }
+    function saveCart(cart){
+      localStorage.setItem(CART_KEY, JSON.stringify(cart));
+      updateCartCount();
+    }
+
+    function addToCart(productId, qty=1){
+      const cart = loadCart();
+      const id = String(productId);
+      if(cart[id]) cart[id].qty += qty; else {
+        const p = products.find(x=>x.id===productId);
+        cart[id] = {id:p.id, title:p.title, price:p.price, img:p.img, qty:qty};
+      }
+      saveCart(cart);
+    }
+    function removeFromCart(productId){
+      const cart = loadCart();
+      delete cart[String(productId)];
+      saveCart(cart);
+    }
+    function setQty(productId, qty){
+      const cart = loadCart();
+      const id = String(productId);
+      if(cart[id]){
+        cart[id].qty = Math.max(0, Math.floor(qty));
+        if(cart[id].qty === 0) delete cart[id];
+        saveCart(cart);
+      }
+    }
+
+    function getCartSummary(){
+      const cart = loadCart();
+      let total = 0, count=0;
+      for(const key of Object.keys(cart)){
+        total += cart[key].price * cart[key].qty;
+        count += cart[key].qty;
+      }
+      return {total, count, items:cart};
+    }
+
+    function updateCartCount(){
+      const {count} = getCartSummary();
+      cartCountEl.textContent = count;
+    }
+
+    // ========== РЕНДЕР КОРЗИНЫ (в модале) ==========
+    function renderCartModal(){
+      const {items, total} = getCartSummary();
+      cartListEl.innerHTML = '';
+      const keys = Object.keys(items);
+      if(keys.length === 0){
+        cartListEl.innerHTML = '<div style="color:var(--muted)">Корзина пуста</div>';
+      }else{
+        for(const k of keys){
+          const it = items[k];
+          const el = document.createElement('div');
+          el.className = 'cart-item';
+          el.innerHTML = `
+            <img src="${it.img}" alt="${it.title}" />
+            <div class="meta">
+              <div style="font-weight:600">${it.title}</div>
+              <div style="color:var(--muted); font-size:0.95rem">${it.price} ₽ × <input class="qty" type="number" min="0" value="${it.qty}" data-id="${it.id}"> = <strong>${it.price * it.qty} ₽</strong></div>
+            </div>
+            <div class="cart-actions">
+              <button class="btn remove-item" data-id="${it.id}">Удалить</button>
+            </div>
+          `;
+          cartListEl.appendChild(el);
+        }
+      }
+      cartTotalEl.textContent = total + ' ₽';
+      updateCartCount();
+    }
+
+    // ========== СОБЫТИЯ ==========
+    document.addEventListener('click', (e)=>{
+      // Добавить в корзину
+      if(e.target.matches('.add-to-cart')){
+        const id = Number(e.target.dataset.id);
+        addToCart(id, 1);
+        renderCartModal();
+      }
+      // Открыть корзину
+      if(e.target === openCartBtn){
+        cartModal.style.display = 'flex';
+        cartModal.setAttribute('aria-hidden','false');
+        renderCartModal();
+      }
+      // Закрыть корзину
+      if(e.target === closeCartBtn){
+        cartModal.style.display = 'none';
+        cartModal.setAttribute('aria-hidden','true');
+        orderSection.style.display = 'none';
+        orderToast.style.display = 'none';
+      }
+      // Удалить товар
+      if(e.target.matches('.remove-item')){
+        const id = Number(e.target.dataset.id);
+        removeFromCart(id);
+        renderCartModal();
+      }
+      // Очистить корзину
+      if(e.target === clearCartBtn){
+        localStorage.removeItem(CART_KEY);
+        renderCartModal();
+      }
+      // Кнопка Оформить заказ
+      if(e.target === checkoutBtn){
+        orderSection.style.display = 'block';
+        // прокрутить к форме
+        orderSection.scrollIntoView({behavior:'smooth', block:'nearest'});
+      }
+    });
+
+    // Изменение количества (делегирование по input)
+    cartListEl.addEventListener('input', (e)=>{
+      if(e.target.matches('input.qty')){
+        const id = Number(e.target.dataset.id);
+        const val = Number(e.target.value);
+        if(!Number.isFinite(val) || val < 0) return;
+        setQty(id, val);
+        renderCartModal();
+      }
+    });
+
+    // Обработка формы заказа
+    orderForm.addEventListener('submit', (e)=>{
+      e.preventDefault();
+      // Простая валидация
+      if(!orderForm.checkValidity()){
+        orderForm.reportValidity();
+        return;
+      }
+      // Здесь можно отправить данные на сервер (позже)
+      // Для задания: показываем сообщение и очищаем корзину
+      orderToast.style.display = 'block';
+      orderToast.textContent = 'Заказ создан!';
+      // Очищаем корзину
+      localStorage.removeItem(CART_KEY);
+      updateCartCount();
+      // Скрыть список товаров
+      cartListEl.innerHTML = '<div style="color:var(--muted)">Спасибо — корзина пуста</div>';
+      cartTotalEl.textContent = '0 ₽';
+    });
+
+    // Отмена оформления
+    cancelOrderBtn.addEventListener('click', ()=>{
+      orderSection.style.display = 'none';
+      orderToast.style.display = 'none';
+    });
+
+    // Закрытие модала по клику на задний фон
+    cartModal.addEventListener('click', (e)=>{
+      if(e.target === cartModal){
+        cartModal.style.display = 'none';
+        cartModal.setAttribute('aria-hidden','true');
+      }
+    });
+
+    // Рендер страницы
+    renderCatalog();
+    // Инициализация счётчиков
+    updateCartCount();
+    // Если в localStorage уже есть товары — корзина сохранится при перезагрузке
+
+    // Для удобства: доступ к карусели клавишами
+    document.addEventListener('keydown', (e)=>{
+      if(e.key === 'Escape'){
+        cartModal.style.display = 'none';
+      }
+    });
+  </script>
+</body>
+</html>
