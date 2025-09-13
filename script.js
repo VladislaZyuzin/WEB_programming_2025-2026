@@ -119,8 +119,8 @@ orderForm.addEventListener('submit',(e)=>{
   if(!orderForm.checkValidity()){ orderForm.reportValidity(); return; }
   orderToast.style.display='block'; orderToast.textContent='Заказ создан!';
   localStorage.removeItem(CART_KEY); updateCartCount();
-  cartListEl.innerHTML='<div style="color:var(--muted)">Спасибо — корзина пуста</div>';
-  cartTotalEl.textContent='0 ₽';
+  //cartListEl.innerHTML='<div style="color:var(--muted)">Спасибо — корзина пуста</div>';
+  //cartTotalEl.textContent='0 ₽';
 });
 cancelOrderBtn.addEventListener('click',()=>{ orderSection.style.display='none'; orderToast.style.display='none'; });
 cartModal.addEventListener('click',(e)=>{ if(e.target===cartModal){ cartModal.style.display='none'; cartModal.setAttribute('aria-hidden','true'); }});
