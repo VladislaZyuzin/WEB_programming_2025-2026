@@ -151,3 +151,110 @@
 ```
 * На планшетах — 2 карточки в ряд.
 * На телефонах — одна карточка в ряд.
+
+### JavaScript — логика магазина
+**Данные товаров**
+```js
+const products = [
+  {id:1, title:'Фитнес-браслет', price:2490, img:'...'},
+  {id:2, title:'Беспроводные наушники', price:4990, img:'...'},
+  ...
+];
+```
+* Массив с товарами: id, название, цена, картинка.
+
+**Рендер каталога**
+```js
+function renderCatalog(){
+  catalogEl.innerHTML = '';
+  for(const p of products){
+    const card = document.createElement('article');
+    card.className = 'card';
+    card.innerHTML = `
+      <img src="${p.img}" alt="${p.title}">
+      <h3>${p.title}</h3>
+      <p class="price-row">
+        <span class="price">${p.price} ₽</span>
+        <button class="btn add-to-cart" data-id="${p.id}">Добавить</button>
+      </p>`;
+    catalogEl.appendChild(card);
+  }
+}
+```
+* Создаются карточки товаров.
+* У каждой кнопки есть data-id, чтобы добавлять в корзину.
+
+**Работа с корзиной через localStorage**
+```js
+const CART_KEY = 'lab_cart_v1';
+
+function loadCart(){
+  return JSON.parse(localStorage.getItem(CART_KEY)) || {};
+}
+function saveCart(cart){
+  localStorage.setItem(CART_KEY, JSON.stringify(cart));
+  updateCartCount();
+}
+```
+* Корзина хранится в браузере, даже после перезагрузки страницы.
+
+**Добавление товара**
+```js
+function addToCart(productId, qty=1){
+  const cart = loadCart();
+  const id = String(productId);
+  if(cart[id]) cart[id].qty += qty;
+  else {
+    const p = products.find(x=>x.id===productId);
+    cart[id] = {id:p.id, title:p.title, price:p.price, img:p.img, qty:qty};
+  }
+  saveCart(cart);
+}
+```
+* Если товар уже есть — увеличиваем количество.
+* Если нет — создаём новую запись.
+
+**Рендер корзины**
+```js
+function renderCartModal(){
+  const {items, total} = getCartSummary();
+  cartListEl.innerHTML = '';
+  for(const k in items){
+    const it = items[k];
+    const el = document.createElement('div');
+    el.className = 'cart-item';
+    el.innerHTML = `
+      <img src="${it.img}">
+      <div class="meta">${it.title} - ${it.price} ₽ × 
+        <input class="qty" type="number" value="${it.qty}" data-id="${it.id}">
+      </div>
+      <button class="btn remove-item" data-id="${it.id}">Удалить</button>`;
+    cartListEl.appendChild(el);
+  }
+  cartTotalEl.textContent = total + ' ₽';
+}
+```
+* Показываются товары в корзине.
+* Есть инпут для изменения количества.
+* Кнопка "Удалить" убирает товар.
+
+**Оформление заказа**
+```js
+orderForm.addEventListener('submit',(e)=>{
+  e.preventDefault();
+  if(!orderForm.checkValidity()){ orderForm.reportValidity(); return; }
+  orderToast.style.display='block';
+  orderToast.textContent='Заказ создан!';
+  localStorage.removeItem(CART_KEY);
+  cartListEl.innerHTML='Спасибо — корзина пуста';
+  cartTotalEl.textContent='0 ₽';
+});
+```
+* Проверка валидации (required, pattern).
+* После успешного заказа корзина очищается.
+
+## Итог
+1. В результате получился демо-интернет-магазин, который:
+2. Работает без сервера (всё хранится в localStorage).
+3. Имеет корзину и оформление заказа.
+4. Поддерживает адаптивность.
