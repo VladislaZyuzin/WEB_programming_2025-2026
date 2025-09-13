@@ -3,7 +3,7 @@ const products = [
   {id:1, title:'Фитнес-браслет', price:2490, img:'https://shopozz.ru/images/articles/article-1218/p1gusgtend10qqbd0ak6jo71car7.jpg'},
   {id:2, title:'Беспроводные наушники', price:4990, img:'https://avatars.mds.yandex.net/get-mpic/1865974/2a0000018dea751ccc9802bc05a3bf6e314a/orig'},
   {id:3, title:'Портативный аккумулятор', price:1890, img:'https://main-cdn.sbermegamarket.ru/big2/hlr-system/1725198414/100023901588b0.jpg'},
-  {id:4, title:'Умная лампочка', price:990, img:'https://avatars.mds.yandex.net/get-mpic/11179429/2a000001938885edbb62c9702d7ca390095b/orig'},
+  {id:4, title:'Умная лампочка', price:990, img:'https://avatars.mds.yandex.net/get-mpic/7650323/2a00000191b422ed280ee237754b0830f8b4/orig'},
   {id:5, title:'Коврик для мыши', price:450, img:'https://avatars.mds.yandex.net/get-mpic/10933212/2a0000018a322a71f0339fd8161a04d26a57/orig'},
   {id:6, title:'Клавиатура механическая', price:7990, img:'https://avatars.mds.yandex.net/get-mpic/5216590/img_id5364861166910646704.jpeg/orig'}
 ];
